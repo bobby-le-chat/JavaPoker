@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import javax.servlet.http.HttpSession;
+
 import org.apache.catalina.websocket.MessageInbound;
 import org.apache.catalina.websocket.StreamInbound;
 import org.apache.catalina.websocket.WebSocketServlet;
@@ -31,92 +33,28 @@ public class ServletPokerWebSocket extends WebSocketServlet {
     private static final String GUEST_PREFIX = "Baltringue_";
 
     private final AtomicInteger connectionIds = new AtomicInteger(0);
-    private final Set<ChatMessageInbound> connections =
-            new CopyOnWriteArraySet<ChatMessageInbound>();
+    private final PokerServerCore Core = new PokerServerCore();
 
     @Override
     protected StreamInbound createWebSocketInbound(String subProtocol,
             HttpServletRequest request) {
-        return new ChatMessageInbound(connectionIds.incrementAndGet());
+    	
+    	// New connection
+    	// TODO : check if session exists, otherwise login and/or create session
+    	if (request.getSession().getAttribute("name") == null)
+    	{
+    		System.out.println("New Connection not logged");
+    		// temp manual session creation
+    		request.getSession().setAttribute("name", GUEST_PREFIX + this.connectionIds.incrementAndGet());
+    		// rights : 0 = visitor, 1 = user, 2 = admin
+    		request.getSession().setAttribute("right", 0);
+    		System.out.println(request.getSession().getAttribute("referer"));
+    	}
+    	// TODO : Create WS user (from database)
+    	
+        return this.Core.addUser();
     }
 
-    private final class ChatMessageInbound extends MessageInbound {
-
-        private final String _nickname;
-        private final int _id;
-
-        private ChatMessageInbound(int id) {
-            this._nickname = GUEST_PREFIX + id;
-            this._id = id;
-        }
-        
-        protected int	getId()
-        {
-        	return this._id;
-        }
-        @Override
-        protected void onOpen(WsOutbound outbound) {
-            connections.add(this);
-            String message = String.format("* %s %s",
-            		this._nickname, " est dans la place.");
-            broadcastToAll(message);
-        }
-
-        @Override
-        protected void onClose(int status) {
-            connections.remove(this);
-            String message = String.format("* %s %s",
-            		this._nickname, " se casse en douce.");
-            broadcastToAll(message);
-        }
-
-        @Override
-        protected void onBinaryMessage(ByteBuffer message) throws IOException {
-            throw new UnsupportedOperationException(
-                    "Binary message not supported.");
-        }
-
-        @Override
-        protected void onTextMessage(CharBuffer message) throws IOException {
-            // Never trust the client
-            String filteredMessage = String.format("%s: %s",
-            		this._nickname, HTMLFilter.filter(message.toString()));
-            broadcastToAll(filteredMessage);
-        }
-        private void broadcastToMyself(String message) {
-            try {
-                CharBuffer buffer = CharBuffer.wrap(message);
-                this.getWsOutbound().writeTextMessage(buffer);
-            } catch (IOException ignore) {
-                // Ignore
-            }
-        }
-        private void broadcastToAll(String message) {
-            for (ChatMessageInbound connection : connections) {
-                try {
-                    CharBuffer buffer = CharBuffer.wrap(message);
-                    connection.getWsOutbound().writeTextMessage(buffer);
-                } catch (IOException ignore) {
-                    // Ignore
-                }
-            }
-        }
-        private void broadcastToSpecific(String message, ArrayList<Integer> idList, Boolean inclusive) {
-            for (ChatMessageInbound connection : connections)
-            {
-            	Boolean isOnTheList = idList.contains(connection.getId());
-            	if ((isOnTheList && inclusive) || (!isOnTheList && !inclusive))
-            	{
-                    try {
-                        CharBuffer buffer = CharBuffer.wrap(message);
-                        connection.getWsOutbound().writeTextMessage(buffer);
-                    } catch (IOException ignore) {
-                    	System.out.print("Exception catch : broadcastToSpecific."); 
-                    }
-            		
-            	}
-            }
-        }
-    }
+    
 
 }

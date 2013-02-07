@@ -62,6 +62,7 @@
 
             Chat.socket.onopen = function () {
                 Console.log('Info: WebSocket connection opened.');
+                Chat.socket.send(document.title);
                 document.getElementById('chat').onkeydown = function(event) {
                     if (event.keyCode == 13) {
                         Chat.sendMessage();
@@ -125,6 +126,6 @@
         <div id="console"></div>
     </div>
 </div>
-<a href="HelloWorldMapping">Invoke Servlet</a>
+<a href="SessionServlet">Invoke Servlet</a>
 </body>
 </html>
