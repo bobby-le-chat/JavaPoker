@@ -1,30 +1,28 @@
-package servlet.poker.websocket;
+package servlet.poker.websocket.core;
 
 import java.util.EventObject;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-public class GameRoom extends IRoom {
+public class GameRoom extends Room {
 
-	private CopyOnWriteArraySet<EventObject> _eventList;
-	private CopyOnWriteArraySet<EventObject> _playerList;
-	private CopyOnWriteArraySet<PokerUser> _userList;
 	
-	GameRoom(CopyOnWriteArraySet<EventObject> eventList)
-	{
-		this._eventList = eventList;
+	public GameRoom(Set<EventObject> eventList, int roomId) {
+		super(eventList, roomId);
 	}
+
 	@Override
 	public void run() {
 		// TODO Auto-generated method stub
 		while (true)
 		{
 	        System.out.println("Check Event : ");
-	        if (this._eventList.size() > 0)
+	        if (super._eventList.size() > 0)
 	        {
 		        System.out.println(" Event trouvé : ");
-	        	EventObject tempEvent = this._eventList.iterator().next();
+	        	EventObject tempEvent = super._eventList.iterator().next();
 		        System.out.println("  " + tempEvent.toString());
-		        this._eventList.remove(tempEvent);
+		        super._eventList.remove(tempEvent);
 	        }
 	        else
 				try {

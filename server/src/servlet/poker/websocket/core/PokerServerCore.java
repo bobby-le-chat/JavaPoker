@@ -1,4 +1,4 @@
-package servlet.poker.websocket;
+package servlet.poker.websocket.core;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.servlet.http.HttpSession;
 
@@ -14,6 +15,8 @@ import org.apache.catalina.websocket.MessageInbound;
 import org.apache.catalina.websocket.StreamInbound;
 import org.apache.catalina.websocket.WsOutbound;
 
+import servlet.poker.websocket.Events.ConnectionEvent;
+import servlet.poker.websocket.Events.MyEvent;
 import utils.HTMLFilter;
 
 
@@ -22,54 +25,43 @@ public class PokerServerCore {
 
     private final Set<UserInbound> connectedPeople =
             new CopyOnWriteArraySet<UserInbound>();
-    private final Set<IRoom> roomList =
-            new CopyOnWriteArraySet<IRoom>();
+    private final Set<Room> roomList =
+            new CopyOnWriteArraySet<Room>();
     private final CommandManager myconnections =
             new CommandManager();
+
+    protected final AtomicInteger connectionIds = new AtomicInteger(0);
+    protected final AtomicInteger roomIds = new AtomicInteger(0);
     
     // Threaded Rooms and event
 	private CopyOnWriteArraySet<EventObject> _eventList = 
             new CopyOnWriteArraySet<EventObject>();
-    private CopyOnWriteArraySet<IRoom> _roomList = 
-            new CopyOnWriteArraySet<IRoom>();
+    private CopyOnWriteArraySet<Room> _roomList = 
+            new CopyOnWriteArraySet<Room>();
 	
+    private void distributeEvent(MyEvent event)
+    {
+    	if (event.getType() == 1) // Connection Event
+    	{
+    		ConnectionEvent 
+    		if (event.)
+    		this.findRoom();
+    	}
+    }
+    
     public final class UserInbound extends MessageInbound {
-
-        private final String _nickname;
         private final HttpSession _session;
-        private final int _id;
+        private final PokerUser	_pokerUser;
 
-        public UserInbound(int id, HttpSession session) {
+        public UserInbound(HttpSession session) {
         	this._session = session;
-            if (this._session.getAttribute("name") == null) {
-            	this._session.setAttribute("name", "Guest_" + id);
-            }
-            if (this._session.getAttribute("id") == null) {
-            	this._session.setAttribute("id", id);
-                this._id = id;
-            }
-            else
-            	this._id = Integer.valueOf(this._session.getAttribute("id").toString());
-            this._nickname = this._session.getAttribute("name").toString();
-        }
-        public UserInbound() {
-        	this._session = null;
-        	this._nickname = "Guest_unknow";
-        	this._id = 0;
-        }
-        protected int	getId()
-        {
-        	return this._id;
-        }
-        protected String	getNickname()
-        {
-        	return this._nickname;
+        	this._pokerUser = new PokerUser("User_" + connectionIds.incrementAndGet(), connectionIds.get(),  this);
         }
         @Override
         protected void onOpen(WsOutbound outbound) {
         	connectedPeople.add(this);
             String message = String.format("* %s %s",
-            		this._nickname, " est dans la place.");
+            		this._pokerUser.getName(), " est dans la place.");
             broadcastToAll(message);
         }
 
@@ -77,7 +69,7 @@ public class PokerServerCore {
         protected void onClose(int status) {
         	connectedPeople.remove(this);
             String message = String.format("* %s %s",
-            		this._nickname, " se casse en douce.");
+            		this._pokerUser.getName(), " se casse en douce.");
             broadcastToAll(message);
         }
 
@@ -90,21 +82,27 @@ public class PokerServerCore {
         @Override
         protected void onTextMessage(CharBuffer message) throws IOException {
             // Never trust the client
+            String stringMessage = message.toString();
+            MyEvent event = CommandManager.parseMessage(stringMessage, this);
+            
+            
+            
             String filteredMessage = String.format("%s: %s",
-            		this._nickname, HTMLFilter.filter(message.toString()));
+            		this._pokerUser.getName(), HTMLFilter.filter(message.toString()));
             String messageOnly = message.toString();
     		System.out.println("Is Content '" + messageOnly + "'");
             if (messageOnly.equals("/newRoom"))
             {
-            	GameRoom tempRoom = new GameRoom(_eventList);
+            	GameRoom tempRoom = new GameRoom(_eventList, roomIds.incrementAndGet());
             	tempRoom.start();
             	_roomList.add(tempRoom);
                 broadcastToAll("new Room");
             }
-            else
+            else if (messageOnly.equals("/joinroom"))
             {
-            	_eventList.add(new MessageEvent(this, filteredMessage));
-            	broadcastToAll(filteredMessage);
+            	int roomId = this._pokerUser.getCurrentRoomId();
+            	_roomList.iterator().next().pushEvent(event);
+                broadcastToAll("new Room");
             }
         }
         private void broadcastToMyself(String message) {
