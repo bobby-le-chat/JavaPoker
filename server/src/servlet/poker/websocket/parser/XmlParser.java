@@ -14,6 +14,8 @@ public class XmlParser implements IParser {
 	private Element table = new Element("table");
 	private Element playerList = new Element("playerList");
 	
+	private Element serverList = new Element("serverList"):
+	
 	public XmlParser()
 	{
 		this.racine.addContent(this.hand);
@@ -42,6 +44,11 @@ public class XmlParser implements IParser {
 
 	@Override
 	public String getFullRoomDescription() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	@Override
+	public String getServerList() {
 		// TODO Auto-generated method stub
 		return null;
 	}

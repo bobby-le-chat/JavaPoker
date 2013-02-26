@@ -19,7 +19,7 @@ import servlet.poker.websocket.core.PokerServerCore;
 public class ServletPokerWebSocket extends WebSocketServlet {
 	private static final long serialVersionUID = 1L;
 
-    private static final String GUEST_PREFIX = "Baltringue_";
+    private static final String GUEST_PREFIX = "User_";
 
     private final AtomicInteger connectionIds = new AtomicInteger(0);
     private final PokerServerCore Core = new PokerServerCore();
@@ -32,16 +32,14 @@ public class ServletPokerWebSocket extends WebSocketServlet {
     	// TODO : check if session exists, otherwise login and/or create session
     	if (request.getSession().getAttribute("name") == null)
     	{
-    		System.out.println("New Connection not logged");
     		// temp manual session creation
     		request.getSession().setAttribute("name", GUEST_PREFIX + this.connectionIds.incrementAndGet());
     		// rights : 0 = visitor, 1 = user, 2 = admin
     		request.getSession().setAttribute("right", 0);
-    		System.out.println(request.getSession().getAttribute("referer"));
     	}
     	// TODO : Create WS user (from database)
     	
-        return this.Core.addUser();
+        return this.Core.addUser(request.getSession());
     }
 
     

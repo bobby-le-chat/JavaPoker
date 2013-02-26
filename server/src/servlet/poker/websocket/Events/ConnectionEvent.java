@@ -1,51 +1,56 @@
 package servlet.poker.websocket.Events;
 
-import java.util.Iterator;
 import java.util.List;
 
 @SuppressWarnings("serial")
 public class ConnectionEvent extends MyEvent { // Connection event is MyEvent type 1
 	
-	// TODO : use enum for the codeNb
-	// 1 = user joins the room
-	// 2 = user leaves the room
+	public enum EConnectionCode {
+		newPlayer,
+		playerLeft,
+		unknow,
+	}
 	
-	private final int code;
+	private final EConnectionCode code;
 	private final List<String> arguments;
 
-	public ConnectionEvent(Object User, int code, List<String> argList) {
-		super(User, 1);
+	public ConnectionEvent(Object User, EConnectionCode code, List<String> argList) {
+		super(User, EEventType.connection);
 		this.code = code;
 		this.arguments = argList;
 	}
 	public ConnectionEvent(Object User, String stringCode, List<String> argList) {
-		super(User, 1);
+		super(User, EEventType.connection);
 		if (stringCode.equals("joinRoom"))
-			this.code = 1;
+			this.code = EConnectionCode.newPlayer;
 		else if (stringCode.equals("leftRoom"))
-			this.code = 2;
+			this.code = EConnectionCode.playerLeft;
 		else
-			this.code = -1;
+			this.code = EConnectionCode.unknow;
 		this.arguments = argList;
 	}
 
-	public int getCode() {
+	public EConnectionCode getCode() {
 		return code;
 	}
 	public List<String> getArguments() {
 		return arguments;
 	}
-	public String getArgument(int id) { // beware ! first argument is id = 0 
+	public String getArgument(int id) { // beware ! first argument is id = 0 and it's not the command's name
 		int i = 0;
-		Iterator<String> it = this.arguments.iterator();
-		String s;
-		while (it.hasNext()) {
-			s = it.next();
+		for (String arg : this.arguments) {
 			if (i == id)
-				return s;
+				return arg;
 			i++;
 		}
-		return null;
+		return "";
 	}
-	
+	public String toString() {
+		String res = "Connection Event code " + code + " args : [";
+		for (String arg : this.arguments) {
+			res += " '" + arg + "' ";
+		}
+		res += "]";
+		return res;
+	}
 }

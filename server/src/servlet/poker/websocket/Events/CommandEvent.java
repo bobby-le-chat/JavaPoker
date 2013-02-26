@@ -9,7 +9,7 @@ public class CommandEvent extends MyEvent { // CommandEvent is MyEvent type 2
 	final private List<String> arguments;
 
 	public CommandEvent(Object source, String cmd, List<String> args) {
-		super(source, 2);
+		super(source, EEventType.command);
 		this.commandName = cmd;
 		this.arguments = args;
 	}

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
-import java.util.EventObject;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,7 +16,8 @@ import org.apache.catalina.websocket.WsOutbound;
 
 import servlet.poker.websocket.Events.ConnectionEvent;
 import servlet.poker.websocket.Events.MyEvent;
-import utils.HTMLFilter;
+import servlet.poker.websocket.Events.ConnectionEvent.EConnectionCode;
+import servlet.poker.websocket.Events.MyEvent.EEventType;
 
 
 public class PokerServerCore {
@@ -25,52 +25,105 @@ public class PokerServerCore {
 
     private final Set<UserInbound> connectedPeople =
             new CopyOnWriteArraySet<UserInbound>();
-    private final Set<Room> roomList =
-            new CopyOnWriteArraySet<Room>();
-    private final CommandManager myconnections =
-            new CommandManager();
+    // private final Set<Room> roomList =
+    //        new CopyOnWriteArraySet<Room>();
+    //private final CommandManager myConnections =
+    //        new CommandManager();
 
     protected final AtomicInteger connectionIds = new AtomicInteger(0);
     protected final AtomicInteger roomIds = new AtomicInteger(0);
     
     // Threaded Rooms and event
-	private CopyOnWriteArraySet<EventObject> _eventList = 
-            new CopyOnWriteArraySet<EventObject>();
+	//private CopyOnWriteArraySet<EventObject> _eventList = 
+    //        new CopyOnWriteArraySet<EventObject>();
     private CopyOnWriteArraySet<Room> _roomList = 
             new CopyOnWriteArraySet<Room>();
-	
-    private void distributeEvent(MyEvent event)
-    {
-    	if (event.getType() == 1) // Connection Event
-    	{
-    		ConnectionEvent 
-    		if (event.)
-    		this.findRoom();
-    	}
+    
+    
+    public PokerServerCore() {
+    	this.addRoom(1);
+    	this.addRoom(2);
+    	this.addRoom(6);
     }
     
-    public final class UserInbound extends MessageInbound {
-        private final HttpSession _session;
-        private final PokerUser	_pokerUser;
+    private void addRoom(int roomId) {
+    	GameRoom tempRoom = new GameRoom(roomId);
+    	tempRoom.start();
+    	this._roomList.add(tempRoom);
+    }
+    
+    private Room findRoom(String argument) {
+    	try {
+    		int roomId = Integer.parseInt(argument);
+        	for (Room room : this._roomList)
+        	{
+        		if (room.getRoomId() == roomId)
+        			return room;
+        	}
+    	} catch (NumberFormatException exception) {
+    		return null;
+    	}
+		return null; // TODO : use throw instead of null return value
+	}
+    private Room findRoom(int roomId) {
+    	for (Room room : this._roomList)
+        	{
+        		if (room.getRoomId() == roomId)
+        			return room;
+        	}
+		return null; // TODO : use throw instead of null return value
+	}
+    private void distributeEvent(MyEvent event)
+    {
+    	int senderRoom = event.getUser().getCurrentRoomId();
+    	if (event.getType() == EEventType.connection && ((ConnectionEvent)event).getCode() == EConnectionCode.newPlayer) // Connection Event
+    	{
+    		ConnectionEvent connectionEvent = (ConnectionEvent)event;
+    		Room concernedRoom = this.findRoom(senderRoom);
+			if (senderRoom != 0 && concernedRoom != null) {
+				concernedRoom.pushEvent(new ConnectionEvent(event.getSocket(), EConnectionCode.playerLeft, new ArrayList<String>()));
+			}
+			concernedRoom = this.findRoom(connectionEvent.getArgument(0));
+			if (concernedRoom != null)
+				concernedRoom.pushEvent(connectionEvent);
+			else
+				event.getSocket().broadcastToMyself("<srv>Connection impossible.");
+			// TODO : change direct message text by a answer manager
+			// Possibly a static class working with code message and enable to manage foreign languages
+			return;
+    	}
+    	if (senderRoom != 0) {
+    		Room concernedRoom = this.findRoom(senderRoom);
+			if (concernedRoom != null)
+				concernedRoom.pushEvent(event);
+    	}
+    	else
+			event.getSocket().broadcastToMyself("<srv>Please connect to a room.");
+    }
+    
+    
 
-        public UserInbound(HttpSession session) {
+	public final class UserInbound extends MessageInbound {
+        private final HttpSession _session;
+        private final PokerUser	pokerUser;
+
+        public PokerUser getPokerUser() {
+			return pokerUser;
+		}
+		public UserInbound(HttpSession session) {
         	this._session = session;
-        	this._pokerUser = new PokerUser("User_" + connectionIds.incrementAndGet(), connectionIds.get(),  this);
+        	this.pokerUser = new PokerUser("User_" + connectionIds.incrementAndGet(), connectionIds.get(),  this);
         }
         @Override
         protected void onOpen(WsOutbound outbound) {
         	connectedPeople.add(this);
-            String message = String.format("* %s %s",
-            		this._pokerUser.getName(), " est dans la place.");
-            broadcastToAll(message);
         }
 
         @Override
         protected void onClose(int status) {
+        	MyEvent event = new ConnectionEvent(this, EConnectionCode.playerLeft, new ArrayList<String>());
+        	distributeEvent(event);
         	connectedPeople.remove(this);
-            String message = String.format("* %s %s",
-            		this._pokerUser.getName(), " se casse en douce.");
-            broadcastToAll(message);
         }
 
         @Override
@@ -84,11 +137,15 @@ public class PokerServerCore {
             // Never trust the client
             String stringMessage = message.toString();
             MyEvent event = CommandManager.parseMessage(stringMessage, this);
+            if (event == null)
+            	this.broadcastToMyself("<srv>Incorrect message.");
+            else {
+            	distributeEvent(event);
+            }
             
-            
-            
+            /*
             String filteredMessage = String.format("%s: %s",
-            		this._pokerUser.getName(), HTMLFilter.filter(message.toString()));
+            		this.pokerUser.getName(), HTMLFilter.filter(message.toString()));
             String messageOnly = message.toString();
     		System.out.println("Is Content '" + messageOnly + "'");
             if (messageOnly.equals("/newRoom"))
@@ -100,12 +157,12 @@ public class PokerServerCore {
             }
             else if (messageOnly.equals("/joinroom"))
             {
-            	int roomId = this._pokerUser.getCurrentRoomId();
+            	int roomId = this.pokerUser.getCurrentRoomId();
             	_roomList.iterator().next().pushEvent(event);
                 broadcastToAll("new Room");
-            }
+            }*/
         }
-        private void broadcastToMyself(String message) {
+        public void broadcastToMyself(String message) {
             try {
                 CharBuffer buffer = CharBuffer.wrap(message);
                 this.getWsOutbound().writeTextMessage(buffer);
@@ -113,7 +170,7 @@ public class PokerServerCore {
                 // Ignore
             }
         }
-        private void broadcastToAll(String message) {
+        /*private void broadcastToAll(String message) {
             for (UserInbound connection : connectedPeople) {
                 try {
                     CharBuffer buffer = CharBuffer.wrap(message);
@@ -138,16 +195,13 @@ public class PokerServerCore {
             		
             	}
             }
-        }
-
-    	@Override
-    	public String	toString()
-    	{
-    		return this._nickname;
-    	}
+        }*/
+		public HttpSession get_session() {
+			return _session;
+		}
     }
 
-	public StreamInbound addUser() {
-		return new UserInbound();
+	public StreamInbound addUser(HttpSession httpSession) {
+		return new UserInbound(httpSession);
 	}
 }

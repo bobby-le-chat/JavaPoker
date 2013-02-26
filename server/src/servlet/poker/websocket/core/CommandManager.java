@@ -25,13 +25,13 @@ public class CommandManager {
 	private static CommandEvent commandEvent(String cmd, String args, Object source) {
 		// This regex find all the white spaces not into quotes, and allows \" in quotes
 		String regex = "\\s+(?=((\\\\[\\\\\"]|[^\\\\\"])*\"(\\\\[\\\\\"]|[^\\\\\"])*\")*(\\\\[\\\\\"]|[^\\\\\"])*$)";
-		List<String> argList = Arrays.asList(args.split(regex));
+		List<String> argList = Arrays.asList(args.trim().split(regex));
 		return new CommandEvent(source, cmd.substring(1), argList); // substring 1 because of the slash
 	}
 	private static ConnectionEvent connectionEvent(String cmd, String args, Object source) {
 		// This regex find all the white spaces not into quotes, and allows \" in quotes
 		String regex = "\\s+(?=((\\\\[\\\\\"]|[^\\\\\"])*\"(\\\\[\\\\\"]|[^\\\\\"])*\")*(\\\\[\\\\\"]|[^\\\\\"])*$)";
-		List<String> argList = Arrays.asList(args.split(regex));
+		List<String> argList = Arrays.asList(args.trim().split(regex));
 		return new ConnectionEvent(source, cmd.substring(1), argList); // substring 1 because of the slash
 	}
 	private static MyEvent messageEvent(String message, Object source) {
@@ -65,6 +65,7 @@ public class CommandManager {
 	}
 	public static MyEvent	parseMessage(String message, Object source) // Do not check validity of the event, the user of the event must check it before using it
 	{
+		System.out.println("ParseMessage : '" + message + "' FROM " + source.toString());
 		MyEvent res = CommandManager.determinateTypeOfEvent(message, source);
 		return res;
 	}

@@ -5,7 +5,7 @@ public class GameEvent extends MyEvent {  // GameEvent is MyEvent type 3
 
 	private final int action;
 	public GameEvent(Object source, int action) {
-		super(source, 3);
+		super(source, EEventType.game);
 		this.action = action;
 	}
 	@Override
